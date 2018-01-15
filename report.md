@@ -15,94 +15,82 @@ The goals / steps of this project are the following:
 * Estimate a bounding box for vehicles detected.
 
 [//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
+[image1]: ./output_images/sample_images.png
+[image2]: ./output_images/sliding_window_search.png
+[image3]: ./output_images/heat_map.png
+[image4]: ./output_images/heat_map_1.png
 [image5]: ./examples/bboxes_and_heat.png
 [image6]: ./examples/labels_map.png
 [image7]: ./examples/output_bboxes.png
-[video1]: ./project_video.mp4
+[video1]: ./result.mp4
 
-## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
----
-### Writeup / README
 
 #### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  [Here](https://github.com/udacity/CarND-Vehicle-Detection/blob/master/writeup_template.md) is a template writeup for this project you can use as a guide and a starting point.  
 
 You're reading it!
 
-### Histogram of Oriented Gradients (HOG)
-
-#### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
-
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
-
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
-
+#### 2. My Approach
+* My code can be found in [P5.ipynb](./P5.ipynb)
+* My appraoch was to use a convolutional neural network to detect cars in the video
+* I used the two data sets on the Udacity website taken from the GTI image database and the KITTI vision benchmark suite.
 ![alt text][image1]
 
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
+* The data set has 17760 colour images all shaped 64x64
+* I split the dataset into 90% for training and 10% for testing
+* This is the CNN I used to train the network
+```
+    model = Sequential()
+    model.add(Lambda(lambda x: x/127.5 - 1.,input_shape=input_shape, output_shape=input_shape))
+    model.add(Conv2D(128, (3, 3), activation='relu', name='conv1',input_shape=input_shape, padding="same"))  
+    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), activation='relu', name='conv2',padding="same"))
+    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), activation='relu', name='conv3',padding="same"))
+    model.add(MaxPooling2D(pool_size=(8,8)))
+    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (8,8), activation="relu",name="dense1")) 
+    model.add(Dropout(0.5))
+    model.add(Conv2D(1, (1,1), name="dense2", activation="tanh")) 
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
-
-
-![alt text][image2]
-
-#### 2. Explain how you settled on your final choice of HOG parameters.
-
-I tried various combinations of parameters and...
-
-#### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
-
-I trained a linear SVM using...
+```
 
 ### Sliding Window Search
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+* This is implemented in cell 9
+* I decided to search within a region of the field of view of the camera on the car. This field of view removes the bonnet and the horizon. 
+* Every image in that field of view is is passed through the trained classifier and a prediction is made whether its a car or not. If it is a bounding box is drawn around the car
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
-
-![alt text][image3]
+![alt text][image2]
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
-
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
-
-![alt text][image4]
+by not using any fully connected layer at the end of the CNN I was able to apply a network trained on 64x64 images to bigger ones like the images coming from the camera on the car
+Here are some example images:
+![alt text][image3]
 ---
 
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./result.mp4)
 
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions in cell 11. 
+Here's an example result showing the heatmap from a series of frames of video and the bounding boxes then overlaid on the last frame of video:
 
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
-
-### Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
-
+![alt text][image4]
 
 ---
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+1. I would like to try other approaches to solving this like YOLO and SSD. I tried using YOLO initially, however I couldn't quite get it to work so I opted for a simple CNN
+2. I would like to try another technique for the bounding boxes that makes use of previous information to gradually expand the box.
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
 
+#### References
+1. https://github.com/maxritter/SDC-Vehicle-Lane-Detection
